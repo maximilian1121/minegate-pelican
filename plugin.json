@@ -2,7 +2,7 @@
     "id": "minegate",
     "name": "Minegate",
     "author": "Maximilian1121",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Provide a way to connect your minecraft server panel to the Minegate router",
     "category": "plugin",
     "url": "https://github.com/maximilian1121/minegate-pelican",
