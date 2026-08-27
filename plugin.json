@@ -6,7 +6,7 @@
     "description": "Provide a way to connect your minecraft server panel to the Minegate router",
     "category": "plugin",
     "url": "https://github.com/maximilian1121/minegate-pelican",
-    "update_url": null,
+    "update_url": "https://cdn.statically.io/gh/maximilian1121/minegate-pelican@main/updates.json",
     "namespace": "Maximilian1121\\Minegate",
     "class": "MinegatePlugin",
     "panels": null,
