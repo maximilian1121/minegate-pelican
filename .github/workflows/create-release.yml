@@ -1,0 +1,109 @@
+name: Release Plugin
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "updates.json"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check version
+        id: version
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(jq -r '.version' plugin.json)
+
+          if git show HEAD^:plugin.json >/tmp/previous-plugin.json 2>/dev/null; then
+            PREVIOUS_VERSION=$(jq -r '.version' /tmp/previous-plugin.json)
+          else
+            PREVIOUS_VERSION=""
+          fi
+
+          echo "Current version:  $CURRENT_VERSION"
+          echo "Previous version: $PREVIOUS_VERSION"
+
+          if [ "$CURRENT_VERSION" = "$PREVIOUS_VERSION" ]; then
+            echo "Version has not changed."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Version changed!"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Update updates.json
+        if: steps.version.outputs.changed == 'true'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP_NAME="plugin-v${VERSION}.zip"
+
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${ZIP_NAME}"
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg download_url "$DOWNLOAD_URL" \
+            '{
+              "*": {
+                "version": $version,
+                "download_url": $download_url
+              }
+            }' > updates.json
+
+      - name: Remove meta from plugin.json
+        if: steps.version.outputs.changed == 'true'
+        shell: bash
+        run: |
+          jq 'del(.meta)' plugin.json > plugin.json.tmp
+          mv plugin.json.tmp plugin.json
+
+      - name: Create zip
+        if: steps.version.outputs.changed == 'true'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          zip -r "plugin-v${VERSION}.zip" . \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x ".gitignore" \
+            -x "plugin-v${VERSION}.zip"
+
+      - name: Commit updates.json
+        if: steps.version.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add updates.json
+
+          if git diff --cached --quiet; then
+            echo "updates.json is already up to date."
+          else
+            git commit -m "Update plugin update manifest to v${{ steps.version.outputs.version }}"
+            git push
+          fi
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.changed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.version.outputs.version }}"
+          name: "v${{ steps.version.outputs.version }}"
+          generate_release_notes: true
+          files: "plugin-v${{ steps.version.outputs.version }}.zip"
