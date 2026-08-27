@@ -4,8 +4,6 @@ namespace Maximilian1121\Minegate\Services;
 
 use Exception;
 use Illuminate\Support\Facades\Http;
-use WebSocket\Client;
-use WebSocket\Exception\Exception as WebSocketException;
 
 class MinegateClient
 {
